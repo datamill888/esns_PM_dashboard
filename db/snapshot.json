@@ -1,0 +1,131 @@
+{
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  },
+  "dialect": "postgresql",
+  "enums": {},
+  "policies": {},
+  "roles": {},
+  "schemas": {},
+  "sequences": {},
+  "tables": {
+    "public.cost_tracker_entries": {
+      "checkConstraints": {},
+      "columns": {
+        "amount": {
+          "name": "amount",
+          "notNull": true,
+          "primaryKey": false,
+          "type": "numeric(14, 2)"
+        },
+        "cost_type": {
+          "name": "cost_type",
+          "notNull": true,
+          "primaryKey": false,
+          "type": "text"
+        },
+        "id": {
+          "name": "id",
+          "notNull": true,
+          "primaryKey": true,
+          "type": "serial"
+        },
+        "job_id": {
+          "name": "job_id",
+          "notNull": true,
+          "primaryKey": false,
+          "type": "text"
+        },
+        "series": {
+          "name": "series",
+          "notNull": true,
+          "primaryKey": false,
+          "type": "text"
+        },
+        "updated_at": {
+          "default": "now()",
+          "name": "updated_at",
+          "notNull": true,
+          "primaryKey": false,
+          "type": "timestamp with time zone"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "notNull": false,
+          "primaryKey": false,
+          "type": "text"
+        },
+        "week_ending": {
+          "name": "week_ending",
+          "notNull": true,
+          "primaryKey": false,
+          "type": "date"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "foreignKeys": {},
+      "indexes": {
+        "cost_tracker_entries_job": {
+          "columns": [
+            {
+              "asc": true,
+              "expression": "job_id",
+              "isExpression": false,
+              "nulls": "last"
+            }
+          ],
+          "concurrently": false,
+          "isUnique": false,
+          "method": "btree",
+          "name": "cost_tracker_entries_job",
+          "with": {}
+        },
+        "cost_tracker_entries_key": {
+          "columns": [
+            {
+              "asc": true,
+              "expression": "job_id",
+              "isExpression": false,
+              "nulls": "last"
+            },
+            {
+              "asc": true,
+              "expression": "cost_type",
+              "isExpression": false,
+              "nulls": "last"
+            },
+            {
+              "asc": true,
+              "expression": "series",
+              "isExpression": false,
+              "nulls": "last"
+            },
+            {
+              "asc": true,
+              "expression": "week_ending",
+              "isExpression": false,
+              "nulls": "last"
+            }
+          ],
+          "concurrently": false,
+          "isUnique": true,
+          "method": "btree",
+          "name": "cost_tracker_entries_key",
+          "with": {}
+        }
+      },
+      "isRLSEnabled": false,
+      "name": "cost_tracker_entries",
+      "policies": {},
+      "schema": "",
+      "uniqueConstraints": {}
+    }
+  },
+  "version": "7",
+  "views": {},
+  "id": "49608c4600279792b496d36d73d5341b009578947ef9dfa868cdd2ab6864a254",
+  "prevId": "0aa8771e046dc764343e59aaae0344219ea7f2c810a88ea5825d411d90a15587",
+  "schemaHash": "911cd8bdc215f7ff82302bff351a14796397b9af42ede3d127647259cd635fc3"
+}

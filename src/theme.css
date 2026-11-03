@@ -1,0 +1,18 @@
+/*
+ * Theme overrides. This file is yours.
+ *
+ * The app uses the Incorta design system (@incorta/ui). Every color, radius
+ * and font is a CSS variable, listed with its role in
+ * node_modules/@incorta/ui/dist/styles/tokens.css. Override one here and every
+ * component picks it up:
+ *
+ *   :root { --primary: #0f766e; --radius: 0.5rem; }
+ *   .dark { --primary: #2dd4bf; }
+ *
+ * To add a NEW color, define the variable and register it with Tailwind so
+ * bg-brand, text-brand, etc. exist:
+ *
+ *   :root { --brand: #0f766e; }
+ *   .dark { --brand: #2dd4bf; }
+ *   @theme inline { --color-brand: var(--brand); }
+ */

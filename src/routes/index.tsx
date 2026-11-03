@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { addDays, fmtShort } from "@/lib/dates";
 import { cn } from "@/lib/format";
-import { getJobs, getSessionInfo } from "@/server/fns";
+import { getJobs, getSessionInfo } from "@/lib/api/pm.functions";
 import { OverviewTab } from "@/components/OverviewTab";
 import { CommitmentsTab } from "@/components/CommitmentsTab";
 import { InvoicingTab } from "@/components/InvoicingTab";
@@ -55,7 +55,7 @@ function Dashboard() {
       <header className="bg-navy text-white">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-7 w-7 place-items-center rounded bg-accent text-[11px] font-black text-navy">PM</span>
+            <span className="grid h-7 w-7 place-items-center rounded bg-gold text-[11px] font-black text-navy">PM</span>
             <div>
               <div className="text-[15px] font-semibold leading-tight">ESNS PM Dashboard</div>
               <div className="text-[11px] text-white/60">Project overview &amp; cost performance</div>
@@ -79,7 +79,7 @@ function Dashboard() {
 
           <div className="ml-auto flex items-center gap-3 text-[11px] text-white/60">
             {jobs.source === "demo" && (
-              <span className="rounded bg-accent/90 px-2 py-0.5 font-semibold text-navy" title="No Incorta SQL endpoint configured — showing sample data">
+              <span className="rounded bg-gold/90 px-2 py-0.5 font-semibold text-navy" title="No Incorta SQL endpoint configured — showing sample data">
                 DEMO DATA
               </span>
             )}
@@ -108,7 +108,7 @@ function Dashboard() {
         {!job ? (
           <div className="mx-auto mt-16 max-w-md rounded-lg border border-line bg-panel p-8 text-center">
             <div className="text-base font-semibold">Choose a job to get started</div>
-            <p className="mt-2 text-sm text-muted">
+            <p className="mt-2 text-sm text-sub">
               Pick a job from the selector above. Figures are as of {fmtShort(asOf)} (defaults to the most recent Sunday).
             </p>
           </div>

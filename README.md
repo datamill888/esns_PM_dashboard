@@ -45,39 +45,36 @@ roll up into their parent row: BLB→BL, BSB→BS, BT2/BT3→BT1, BC1–4→BC
 ## Layout
 
 ```
-db/schema.ts                  app-owned tables (Drizzle)
-src/server.ts                 auth-gate entry        (LOCKED on appkit — stand-in)
-src/server/auth.ts            Incorta session helper (LOCKED on appkit — stand-in)
-src/server/incorta.ts         SQL Interface helper (per-user connection, client-side binding)
+db/schema.ts                  app-owned tables (Drizzle) + db/snapshot.json
+src/server.ts                 auth-gate entry        (LOCKED — platform file)
+src/server/auth.ts            Incorta session helper (LOCKED — platform file)
+run.sh                                               (LOCKED — platform file)
+src/server/incorta.ts         SQL Interface helper (template)
 src/server/queries.server.ts  all Incorta SQL
-src/server/fns.ts             server functions called by the UI
+src/lib/api/pm.functions.ts   server functions called by the UI
 src/server/tracker.server.ts  tracker persistence
-src/server/demo.server.ts     sample data for local runs without Incorta
+src/server/demo.server.ts     sample data when there is no Incorta SQL endpoint
 src/routes/index.tsx          header, job picker, tabs
 src/components/*              tab views and the tracker grid
+src/app.css                   app styles (on top of @incorta/ui)
 ```
 
-## Local development
+Client code must not import from `src/server/**` (the build fails if it does),
+so server functions live in `src/lib/api/`.
+
+## Checks
 
 ```bash
 bun install
-bun run dev          # http://localhost:3000
+bun run typecheck && bun test test && bun run build
 ```
 
-If `INCORTA_PG_URL` / `INCORTA_URL` aren't set, the app runs on **demo data**
-(marked with a DEMO DATA badge). Without `DATABASE_URL`, tracker edits are kept
-in memory only (marked NOT SAVED).
+## Incorta appkit
 
-Before pushing, run:
+| Env | App id |
+| --- | --- |
+| ES Prod: `https://energysolutions-prod.cloud4.incorta.com/incorta` | `ugkao82s5pjasgr5` (see `.appkit-target`) |
 
-```bash
-bun run typecheck && bun run test && bun run build
-```
-
-## Deploying to Incorta (appkit)
-
-Not created on Incorta yet. To create it:
-
-1. Create the app on ES Prod with the existing code: `create.sh <env> --name "ESNS PM Dashboard" --stack tanstack --existing`.
-2. Copy the template's locked files (`src/server.ts`, `src/server/auth.ts`, `run.sh`) over the stand-ins here **unchanged**. Then align `vite.config.ts` and `src/server/incorta.ts` with the template's versions.
-3. Generate `db/snapshot.json` (`snapshot.sh <env>`), commit it, then push and publish.
+After changing `db/schema.ts`, regenerate `db/snapshot.json` (appkit-push
+`snapshot.sh`) and commit both. A push makes a preview version; publishing
+creates the production tables and makes the app live.

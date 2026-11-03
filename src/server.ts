@@ -1,19 +1,72 @@
-/**
- * Server entry — wraps every request in the Incorta auth gate.
- *
- * NOTE: on appkit this file is a LOCKED platform file. When the app is created
- * on Incorta (`create.sh --existing`), replace it with the template's copy
- * unchanged. This stand-in mirrors that contract so the app runs locally.
- */
-import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
-import { auth } from "./server/auth";
+import "./lib/error-capture";
 
-export default createServerEntry({
-  async fetch(request) {
-    if (auth) {
-      const gated = await auth.gate(request);
-      if (gated) return gated;
+import { consumeLastCapturedError } from "./lib/error-capture";
+import { renderErrorPage } from "./lib/error-page";
+import { handleAuthRequest } from "./server/auth";
+
+type ServerEntry = {
+  fetch: (
+    request: Request,
+    env: unknown,
+    ctx: unknown,
+  ) => Promise<Response> | Response;
+};
+
+let serverEntryPromise: Promise<ServerEntry> | undefined;
+
+async function getServerEntry(): Promise<ServerEntry> {
+  if (!serverEntryPromise) {
+    serverEntryPromise = import("@tanstack/react-start/server-entry").then(
+      (m) => (m.default ?? m) as ServerEntry,
+    );
+  }
+  return serverEntryPromise;
+}
+
+// h3 swallows in-handler throws into a normal 500 Response with body
+// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
+async function normalizeCatastrophicSsrResponse(
+  response: Response,
+): Promise<Response> {
+  if (response.status < 500) return response;
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) return response;
+
+  const body = await response.clone().text();
+  if (
+    !body.includes('"unhandled":true') ||
+    !body.includes('"message":"HTTPError"')
+  ) {
+    return response;
+  }
+
+  console.error(
+    consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`),
+  );
+  return new Response(renderErrorPage(), {
+    status: 500,
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+}
+
+export default {
+  async fetch(request: Request, env: unknown, ctx: unknown) {
+    try {
+      // Incorta auth gate — serves /auth/* and refuses everything else
+      // without a session (src/server/auth.ts). Runs before the app for
+      // EVERY request; do not remove.
+      const authResponse = await handleAuthRequest(request);
+      if (authResponse) return authResponse;
+
+      const handler = await getServerEntry();
+      const response = await handler.fetch(request, env, ctx);
+      return await normalizeCatastrophicSsrResponse(response);
+    } catch (error) {
+      console.error(error);
+      return new Response(renderErrorPage(), {
+        status: 500,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
     }
-    return handler.fetch(request);
   },
-});
+};

@@ -4,7 +4,7 @@
  * demo) a process-memory map stands in so the grid is still usable.
  */
 import { and, between, eq } from "drizzle-orm";
-import { costTrackerEntries } from "@db/schema";
+import { costTrackerEntries } from "../../db/schema";
 import type { ISODate } from "@/lib/dates";
 import type { TrackerCell, TrackerSeries } from "@/lib/types";
 import { getDb } from "./db";

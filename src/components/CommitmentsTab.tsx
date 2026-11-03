@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ISODate } from "@/lib/dates";
 import { money, money2, qty } from "@/lib/format";
 import type { CommitmentRow } from "@/lib/types";
-import { getCommitments } from "@/server/fns";
+import { getCommitments } from "@/lib/api/pm.functions";
 import { Card, Empty, ErrorBox, Loading, Stat } from "./ui";
 
 export function CommitmentsTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
@@ -84,7 +84,7 @@ export function CommitmentsTab({ jobId, asOf }: { jobId: string; asOf: ISODate }
                     <td className="font-semibold">{r.poNum}</td>
                     <td>{r.lineNum}</td>
                     <td className="max-w-[200px] truncate" title={r.vendorName ?? ""}>{r.vendorName ?? r.vendorId ?? "—"}</td>
-                    <td className="max-w-[240px] truncate text-muted" title={r.lineDescr ?? r.poDescr ?? ""}>{r.lineDescr ?? r.poDescr ?? "—"}</td>
+                    <td className="max-w-[240px] truncate text-sub" title={r.lineDescr ?? r.poDescr ?? ""}>{r.lineDescr ?? r.poDescr ?? "—"}</td>
                     <td title={r.costCodeDescr ?? ""}>{r.costCode ?? "—"}</td>
                     <td title={r.costTypeDescr ?? ""}>{r.costType ?? "—"}</td>
                     <td>{r.status === "A" || r.status === "O" ? "Open" : r.status === "C" ? "Closed" : r.status ?? "—"}</td>

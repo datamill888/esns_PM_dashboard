@@ -4,7 +4,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { fmtShort, type ISODate } from "@/lib/dates";
 import { money, moneyCompact, ratio } from "@/lib/format";
 import type { TrackerCell } from "@/lib/types";
-import { getTracker, saveTracker } from "@/server/fns";
+import { getTracker, saveTracker } from "@/lib/api/pm.functions";
 import { TrackerGrid } from "./TrackerGrid";
 import { Card, ErrorBox, Loading, Stat } from "./ui";
 
@@ -65,7 +65,7 @@ export function TrackerTab({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3 rounded-lg bg-navy px-4 py-2.5 text-white">
-        <span className="grid h-6 w-7 place-items-center rounded bg-accent text-[10px] font-black text-navy">EV</span>
+        <span className="grid h-6 w-7 place-items-center rounded bg-gold text-[10px] font-black text-navy">EV</span>
         <span className="text-[14px] font-semibold">Cost Performance Tracker</span>
         <span className="mx-1 h-5 w-px bg-white/20" />
         <label className="flex items-center gap-2 text-[12px] text-white/70">
@@ -75,7 +75,7 @@ export function TrackerTab({
           <input type="date" className="h-7 rounded bg-white px-2 text-[12px] text-ink" value={to} min={from} onChange={(e) => e.target.value && onPeriod(from, e.target.value)} />
         </label>
         {q.data && !q.data.persisted && (
-          <span className="ml-auto rounded bg-accent/90 px-2 py-0.5 text-[11px] font-semibold text-navy" title="No app database configured — entries are kept in memory only">
+          <span className="ml-auto rounded bg-gold/90 px-2 py-0.5 text-[11px] font-semibold text-navy" title="No app database configured — entries are kept in memory only">
             NOT SAVED (local preview)
           </span>
         )}
@@ -126,6 +126,6 @@ export function TrackerTab({
 }
 
 function cpiClass(num: number, den: number) {
-  if (!den) return "text-muted";
+  if (!den) return "text-sub";
   return num / den >= 1 ? "text-good" : "text-bad";
 }

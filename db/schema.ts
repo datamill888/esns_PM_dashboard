@@ -32,17 +32,3 @@ export const costTrackerEntries = pgTable(
     index("cost_tracker_entries_job").on(t.jobId),
   ],
 );
-
-/** Free-text PM notes per job and week (shown on the Overview tab). */
-export const pmNotes = pgTable(
-  "pm_notes",
-  {
-    id: serial("id").primaryKey(),
-    jobId: text("job_id").notNull(),
-    asOfDate: date("as_of_date").notNull(),
-    note: text("note").notNull(),
-    author: text("author"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("pm_notes_job").on(t.jobId)],
-);

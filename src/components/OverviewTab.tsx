@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fmtShort, type ISODate } from "@/lib/dates";
 import { money, moneyCompact, pct } from "@/lib/format";
-import { getOverview } from "@/server/fns";
+import { getOverview } from "@/lib/api/pm.functions";
 import { Card, Delta, Empty, ErrorBox, Loading, Stat } from "./ui";
 
 export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
@@ -39,7 +39,7 @@ export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
               ["Days Elapsed", String(d.daysElapsed)],
             ].map(([k, v]) => (
               <div key={k} className="min-w-0">
-                <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted">{k}</dt>
+                <dt className="text-[10px] font-semibold uppercase tracking-wider text-sub">{k}</dt>
                 <dd className="truncate text-[13px] font-medium" title={v ?? ""}>{v || "—"}</dd>
               </div>
             ))}
@@ -81,7 +81,7 @@ export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
                     const ch = r.periodSpend - r.lastPeriodSpend;
                     return (
                       <tr key={r.costType}>
-                        <td><span className="font-semibold">{r.costType}</span> <span className="text-muted">{r.costTypeDescr}</span></td>
+                        <td><span className="font-semibold">{r.costType}</span> <span className="text-sub">{r.costTypeDescr}</span></td>
                         <td className="num r">{money(r.periodSpend)}</td>
                         <td className="num r">{money(r.lastPeriodSpend)}</td>
                         <td className="r"><Delta value={ch} goodWhenPositive={false}>{money(ch)}</Delta></td>
@@ -190,7 +190,7 @@ function PerfTable({
             return (
               <tr key={r.key}>
                 <td className="font-semibold">{r.code}</td>
-                <td className="max-w-[280px] truncate text-muted" title={r.descr}>{r.descr}</td>
+                <td className="max-w-[280px] truncate text-sub" title={r.descr}>{r.descr}</td>
                 {showAverages && (
                   <>
                     <td className="num r">{money(r.spend / days)}</td>
@@ -228,14 +228,14 @@ function PerfTable({
 }
 
 function Bar({ p }: { p: number | null }) {
-  if (p == null) return <span className="text-muted">—</span>;
+  if (p == null) return <span className="text-sub">—</span>;
   const w = Math.min(100, Math.max(0, p * 100));
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-20 overflow-hidden rounded-full bg-line">
         <div className={p > 1 ? "h-full bg-bad" : p > 0.9 ? "h-full bg-fc" : "h-full bg-bl"} style={{ width: `${w}%` }} />
       </div>
-      <span className="num text-[12px] text-muted">{pct(p)}</span>
+      <span className="num text-[12px] text-sub">{pct(p)}</span>
     </div>
   );
 }

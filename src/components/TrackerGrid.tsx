@@ -162,11 +162,11 @@ export function TrackerGrid({
     <tr>
       <th className={`sticky left-0 z-10 min-w-[230px] border-b border-line px-3 py-2 text-left ${bg}`} />
       {weeks.map((w) => (
-        <th key={w} className="min-w-[110px] border-b border-line px-2 py-2 text-center text-[11px] font-medium text-muted">
+        <th key={w} className="min-w-[110px] border-b border-line px-2 py-2 text-center text-[11px] font-medium text-sub">
           {fmtShort(w)}
         </th>
       ))}
-      <th className="min-w-[120px] border-b border-l border-line bg-canvas px-3 py-2 text-right text-[11px] font-semibold uppercase text-muted">Total</th>
+      <th className="min-w-[120px] border-b border-l border-line bg-canvas px-3 py-2 text-right text-[11px] font-semibold uppercase text-sub">Total</th>
     </tr>
   );
 
@@ -188,7 +188,7 @@ export function TrackerGrid({
                   <tr key={ct.code}>
                     <td className="sticky left-0 z-10 max-w-[230px] truncate whitespace-nowrap border-b border-line/70 bg-panel px-3 py-1" title={`${ct.code} — ${ct.descr}`}>
                       <span className="font-semibold">{ct.code}</span>
-                      <span className="ml-2 text-[11px] text-muted">{ct.descr}</span>
+                      <span className="ml-2 text-[11px] text-sub">{ct.descr}</span>
                     </td>
                     {weeks.map((w, wi) => {
                       const key = k(s, ct.code, w);
@@ -217,7 +217,7 @@ export function TrackerGrid({
                   </tr>
                 ))}
                 <tr className={meta.soft}>
-                  <td className={`sticky left-0 z-10 border-b border-line px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted ${meta.head}`}>Total</td>
+                  <td className={`sticky left-0 z-10 border-b border-line px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-sub ${meta.head}`}>Total</td>
                   {weeks.map((w) => (
                     <td key={w} className="num border-b border-line px-3 py-2 text-right font-semibold">
                       {colTotal(s, w) ? money(colTotal(s, w)) : ""}
@@ -241,12 +241,12 @@ export function TrackerGrid({
                 <tr key={ct.code}>
                   <td className="sticky left-0 z-10 max-w-[230px] truncate whitespace-nowrap border-b border-line/70 bg-panel px-3 py-1.5" title={`${ct.code} — ${ct.descr}`}>
                     <span className="font-semibold">{ct.code}</span>
-                    <span className="ml-2 text-[11px] text-muted">{ct.descr}</span>
+                    <span className="ml-2 text-[11px] text-sub">{ct.descr}</span>
                   </td>
                   {weeks.map((w) => {
                     const v = actuals.get(`${ct.code}|${w}`);
                     return (
-                      <td key={w} className="num border-b border-line/70 px-3 py-1.5 text-right text-muted">
+                      <td key={w} className="num border-b border-line/70 px-3 py-1.5 text-right text-sub">
                         {v ? money(v) : ""}
                       </td>
                     );

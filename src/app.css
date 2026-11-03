@@ -1,0 +1,99 @@
+/* ESNS PM Dashboard tokens and component styles (app-owned). */
+@theme {
+  --color-navy: #1b3358;
+  --color-navy-2: #24426f;
+  --color-ink: #1f2a37;
+  --color-sub: #6b7686;
+  --color-line: #e3e8ef;
+  --color-panel: #ffffff;
+  --color-canvas: #f5f7fa;
+  --color-gold: #f2b705;
+
+  /* series colors: Baseline / Forecast / Earned value / Actual */
+  --color-bl: #1d78c1;
+  --color-bl-soft: #eaf4fc;
+  --color-fc: #c77700;
+  --color-fc-soft: #fff7e3;
+  --color-ev: #0f8a5f;
+  --color-ev-soft: #e8f7f0;
+  --color-ac: #6d4bd1;
+
+  --color-good: #0f8a5f;
+  --color-bad: #c2362b;
+
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: 14px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* compact data tables */
+.dtable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.dtable th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  color: var(--color-sub);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-line);
+  white-space: nowrap;
+}
+.dtable td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #eef1f5;
+  white-space: nowrap;
+}
+.dtable tbody tr:hover td {
+  background: #f8fafc;
+}
+.dtable .r {
+  text-align: right;
+}
+.dtable tfoot td {
+  font-weight: 600;
+  background: #f8fafc;
+  border-top: 1px solid var(--color-line);
+}
+
+/* tracker grid inputs */
+.cell-input {
+  width: 100%;
+  min-width: 96px;
+  padding: 6px 8px;
+  text-align: right;
+  background: #fbfcfe;
+  border: 1px solid #edf0f4;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.cell-input:hover {
+  border-color: var(--color-line);
+}
+.cell-input:focus {
+  outline: none;
+  border-color: var(--color-bl);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgb(29 120 193 / 0.15);
+}
+.cell-input[data-state="saving"] {
+  background: #fffbea;
+}
+.cell-input[data-state="error"] {
+  border-color: var(--color-bad);
+}

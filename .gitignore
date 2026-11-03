@@ -1,9 +1,37 @@
-node_modules
-dist
-.output
-.nitro
-.tanstack
+# Dependencies
+node_modules/
+
+# App database — live data, never versioned (the drizzle/ migrations ARE)
+.data/
+
+# Build / server output
+dist/
+.output/
+.nitro/
+.tanstack/
+.vinxi/
+.wrangler/
+
+# Vite
+.vite/
+*.local
+
+# Environment
 .env
 .env.*
+!.env.example
+
+# Logs
 *.log
+
+# TypeScript
+*.tsbuildinfo
+
+# Editor / OS
+.idea/
+.vscode/
 .DS_Store
+
+# Agent runtime
+.claude
+.resources

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { daysBetween, fmtShort, type ISODate } from "@/lib/dates";
 import { money } from "@/lib/format";
-import { getInvoices } from "@/server/fns";
+import { getInvoices } from "@/lib/api/pm.functions";
 import { Card, Empty, ErrorBox, Loading, Stat } from "./ui";
 
 export function InvoicingTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
@@ -50,7 +50,7 @@ export function InvoicingTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) 
                   return (
                     <tr key={`${r.invoiceNum}|${r.invoiceDate}`}>
                       <td className="font-semibold">{r.invoiceNum}</td>
-                      <td className="max-w-[260px] truncate text-muted" title={r.description ?? ""}>{r.description ?? "—"}</td>
+                      <td className="max-w-[260px] truncate text-sub" title={r.description ?? ""}>{r.description ?? "—"}</td>
                       <td>{fmtShort(r.invoiceDate)}</td>
                       <td>{fmtShort(r.receivedDate)}</td>
                       <td className={`num r ${!r.receivedDate && open != null && open > 60 ? "font-semibold text-bad" : ""}`}>{open ?? "—"}</td>
