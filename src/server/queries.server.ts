@@ -12,7 +12,8 @@
  *   PO & SC                       → PO_DTL/PO_MSTR + BI40_PO_PRC_HIST (ordered) + AP_PH_BASE (invoiced/paid);
  *                                   SC_DTL equivalents via BI40_SC_PRC_HIST.
  *
- * Rules: schema/table quoted exactly, columns lowercase, every SUM cast ::float8,
+ * Rules: schema/table quoted exactly, columns unquoted (except "Type", which must be
+ * quoted in its exact case), every SUM cast ::float8,
  * ids never cast to numbers, values always passed as $n params.
  */
 import { addDays, sundayOnOrBefore, toISO, type ISODate } from "@/lib/dates";
@@ -27,7 +28,21 @@ import type {
   WeeklySpendPoint,
 } from "@/lib/types";
 import { ACTUALS_ROLLUP } from "./costTypes";
-import { sqlQuery } from "./incorta";
+import { sqlQuery as rawSqlQuery } from "./incorta";
+
+/**
+ * The SQL Interface returns unaliased columns in the model's own case
+ * (JOB_ID), aliased ones as written. Normalise every key to lowercase so the
+ * mappers below can rely on one spelling.
+ */
+async function sqlQuery<T>(req: Request, sql: string, params: unknown[] = []): Promise<T[]> {
+  const rows = await rawSqlQuery(req, sql, params);
+  return rows.map((r) => {
+    const o: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(r)) o[k.toLowerCase()] = v;
+    return o as T;
+  });
+}
 
 const STACK = `"Penta_Projects"."Job_Cost_Stacked_1A"`;
 /** Guard against junk dates in Penta (years 0005 / 2160 / 2600 exist). */
@@ -74,7 +89,7 @@ export async function jobHeader(req: Request, jobId: string, asOf: ISODate): Pro
   const [w] = await sqlQuery<{ wk: unknown }>(
     req,
     `SELECT MAX(week_ending) AS wk FROM ${STACK}
-      WHERE job_id = $1 AND "type" = 'JC' AND week_ending <= $2::date AND week_ending >= $3::date`,
+      WHERE job_id = $1 AND "Type" = 'JC' AND week_ending <= $2::date AND week_ending >= $3::date`,
     [jobId, asOf, MIN_DATE],
   );
   const name = (f: unknown, l: unknown) => [f, l].filter(Boolean).join(" ").trim() || null;
@@ -109,7 +124,7 @@ export async function weeklyPerformance(req: Request, jobId: string, asOf: ISODa
             SUM(CASE WHEN s.week_ending = $3::date THEN s.amt ELSE 0 END)::float8 AS prev
        FROM ${STACK} s
        LEFT JOIN "Penta"."COST_TYPE" ct ON ct.cost_type_cd = s.cost_type_cd
-      WHERE s.job_id = $1 AND s."type" = 'JC'
+      WHERE s.job_id = $1 AND s."Type" = 'JC'
         AND s.week_ending IN ($2::date, $3::date)
         AND s.distr_date_date <= $4::date
       GROUP BY s.cost_type_cd
@@ -128,11 +143,11 @@ export async function perfByCostType(req: Request, jobId: string, asOf: ISODate)
   const rows = await sqlQuery<Record<string, unknown>>(
     req,
     `SELECT s.cost_type_cd, MAX(ct.descr) AS descr,
-            SUM(CASE WHEN s."type" = 'JC'  THEN s.amt ELSE 0 END)::float8 AS spend,
-            SUM(CASE WHEN s."type" = 'EST' THEN s.amt ELSE 0 END)::float8 AS budget
+            SUM(CASE WHEN s."Type" = 'JC'  THEN s.amt ELSE 0 END)::float8 AS spend,
+            SUM(CASE WHEN s."Type" = 'EST' THEN s.amt ELSE 0 END)::float8 AS budget
        FROM ${STACK} s
        LEFT JOIN "Penta"."COST_TYPE" ct ON ct.cost_type_cd = s.cost_type_cd
-      WHERE s.job_id = $1 AND s."type" IN ('EST', 'JC')
+      WHERE s.job_id = $1 AND s."Type" IN ('EST', 'JC')
         AND s.distr_date_date <= $2::date
       GROUP BY s.cost_type_cd
       ORDER BY s.cost_type_cd`,
@@ -147,12 +162,12 @@ export async function perfByCostCode(req: Request, jobId: string, asOf: ISODate)
   const rows = await sqlQuery<Record<string, unknown>>(
     req,
     `SELECT s.cc, MAX(p.descr) AS descr,
-            SUM(CASE WHEN s."type" = 'JC'  THEN s.amt ELSE 0 END)::float8 AS spend,
-            SUM(CASE WHEN s."type" = 'EST' THEN s.amt ELSE 0 END)::float8 AS budget
+            SUM(CASE WHEN s."Type" = 'JC'  THEN s.amt ELSE 0 END)::float8 AS spend,
+            SUM(CASE WHEN s."Type" = 'EST' THEN s.amt ELSE 0 END)::float8 AS budget
        FROM ${STACK} s
        LEFT JOIN "Penta_Projects"."PM_Cost_Code" p
               ON p.job_id = s.job_id AND p.cc = s.cc AND p.cost_type_cd = s.cost_type_cd
-      WHERE s.job_id = $1 AND s."type" IN ('EST', 'JC')
+      WHERE s.job_id = $1 AND s."Type" IN ('EST', 'JC')
         AND s.distr_date_date <= $2::date
       GROUP BY s.cc
       ORDER BY s.cc`,
@@ -168,7 +183,7 @@ export async function weeklyTrend(req: Request, jobId: string, asOf: ISODate): P
     req,
     `SELECT week_ending, SUM(amt)::float8 AS amt
        FROM ${STACK}
-      WHERE job_id = $1 AND "type" = 'JC'
+      WHERE job_id = $1 AND "Type" = 'JC'
         AND week_ending <= $2::date AND week_ending >= $3::date
       GROUP BY week_ending
       ORDER BY week_ending`,
@@ -186,7 +201,7 @@ export async function actualsByWeek(req: Request, jobId: string, from: ISODate, 
     req,
     `SELECT cost_type_cd, week_ending, SUM(amt)::float8 AS amt
        FROM ${STACK}
-      WHERE job_id = $1 AND "type" = 'JC'
+      WHERE job_id = $1 AND "Type" = 'JC'
         AND week_ending BETWEEN $2::date AND $3::date
       GROUP BY cost_type_cd, week_ending`,
     [jobId, from, to],
@@ -249,7 +264,8 @@ export async function commitments(req: Request, jobId: string, asOf: ISODate): P
         GROUP BY po_ou_id, po_num, po_line_num)
      SELECT d.po_num, m.descr AS po_descr, m.ven_id, v.name AS vendor, d.line_num, d.descr AS line_descr,
             d.po_stat_cd, d.cc, cc.descr AS cc_descr, d.cost_type_cd, ct.descr AS ct_descr,
-            h.amt AS ord_amt, h.units AS ord_units, ap.amt AS inv_amt, ap.units AS inv_units, ap.paid
+            h.amt AS ord_amt, h.units AS ord_units, d.booked_units::float8 AS booked_units,
+            ap.amt AS inv_amt, ap.units AS inv_units, ap.paid
        FROM "Penta_Projects"."PO_DTL" d
        JOIN "Penta_Projects"."PO_MSTR" m ON m.ou_id = d.ou_id AND m.po_num = d.po_num
        LEFT JOIN "Penta"."VENDOR" v ON v.ven_id = m.ven_id
@@ -300,7 +316,8 @@ export async function commitments(req: Request, jobId: string, asOf: ISODate): P
     costType: s(r.cost_type_cd),
     costTypeDescr: s(r.ct_descr),
     status: s(r.po_stat_cd),
-    qtyOrdered: n(r.ord_units),
+    // PO_DTL.booked_units is the ordered quantity; price history often carries 0 units.
+    qtyOrdered: r.booked_units != null ? n(r.booked_units) : n(r.ord_units),
     qtyReceived: n(r.inv_units),
     amtOrdered: n(r.ord_amt),
     amtReceived: n(r.inv_amt),
