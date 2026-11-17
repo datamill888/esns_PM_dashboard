@@ -65,6 +65,8 @@ export interface InvoiceRow {
 
 /** "PO & SC" — commitment lines. */
 export interface CommitmentRow {
+  /** Purchase order or subcontract line. */
+  doc: "PO" | "SC";
   vendorId: string | null;
   vendorName: string | null;
   poNum: string;
@@ -92,6 +94,56 @@ export interface Overview {
   trend: WeeklySpendPoint[];
   /** Days from job start to as-of date — drives the daily/weekly/monthly averages. */
   daysElapsed: number;
+  /** Week-ending dates used by Weekly Performance ("period" and "last period"). */
+  periodWeek: ISODate;
+  lastPeriodWeek: ISODate;
+}
+
+/* ---------------- Drill-through (click a value → its transactions) ---------------- */
+
+/**
+ * What a clicked value is made of. Each variant mirrors the filters of the
+ * query that produced the number, so the drill total reconciles with it.
+ */
+export type DrillRequest =
+  /** Job cost lines (Job_Cost_Stacked_1A): actuals (JC) and/or budget (EST). */
+  | {
+      kind: "cost";
+      types: ("JC" | "EST")[];
+      costTypes?: string[];
+      costCode?: string;
+      weekEnding?: ISODate;
+      /** Apply the dashboard's "distributed on or before As of" rule. */
+      capToAsOf?: boolean;
+    }
+  /** AP distributions (received / invoiced / paid) for a PO or SC line. */
+  | { kind: "ap"; doc: "PO" | "SC"; num: string; line: string }
+  /** Price history (ordered amount, change orders) for a PO or SC line. */
+  | { kind: "commit"; doc: "PO" | "SC"; num: string; line: string }
+  /** AR distributions for one invoice, or every invoice on the job. */
+  | { kind: "ar"; invoiceNum?: string; invoiceDate?: ISODate | null };
+
+export interface DrillOpen {
+  title: string;
+  /** Short description of the filters, shown under the title. */
+  subtitle?: string;
+  request: DrillRequest;
+  /** The value that was clicked, to show whether the rows reconcile with it. */
+  clickedValue?: number;
+  /** Which column of the result the clicked value corresponds to (default "amt"). */
+  valueColumn?: string;
+}
+
+export type DrillColumnType = "text" | "money" | "num" | "date";
+
+export interface DrillResult {
+  source: DataSource;
+  columns: { key: string; label: string; type: DrillColumnType }[];
+  rows: Record<string, string | number | null>[];
+  /** Totals over ALL matching rows (not just the rows returned). */
+  totals: Record<string, number>;
+  count: number;
+  truncated: boolean;
 }
 
 /** Cost Performance Tracker (Tab 4). */

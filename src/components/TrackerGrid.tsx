@@ -1,6 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { fmtShort, type ISODate } from "@/lib/dates";
 import { money } from "@/lib/format";
+import { ACTUALS_ROLLUP } from "@/lib/costTypes";
+import { Drill } from "./Drill";
+
+/** A tracker row's own code plus the codes rolled into it for actuals (e.g. BL + BLB). */
+const actualCodes = (code: string) => [code, ...Object.keys(ACTUALS_ROLLUP).filter((k) => ACTUALS_ROLLUP[k] === code)];
 import { TRACKER_SERIES, type TrackerCell, type TrackerSeries } from "@/lib/types";
 
 export const SERIES_META: Record<TrackerSeries, { label: string; head: string; soft: string; text: string }> = {
@@ -247,7 +252,18 @@ export function TrackerGrid({
                     const v = actuals.get(`${ct.code}|${w}`);
                     return (
                       <td key={w} className="num border-b border-line/70 px-3 py-1.5 text-right text-sub">
-                        {v ? money(v) : ""}
+                        {v ? (
+                          <Drill
+                            title={`Actual cost — ${ct.code} ${ct.descr}, week ending ${fmtShort(w)}`}
+                            subtitle={actualCodes(ct.code).length > 1 ? `Includes ${actualCodes(ct.code).slice(1).join(", ")}` : undefined}
+                            request={{ kind: "cost", types: ["JC"], costTypes: actualCodes(ct.code), weekEnding: w }}
+                            value={v}
+                          >
+                            {money(v)}
+                          </Drill>
+                        ) : (
+                          ""
+                        )}
                       </td>
                     );
                   })}

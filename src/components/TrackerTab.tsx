@@ -84,7 +84,7 @@ export function TrackerTab({
       {q.isPending ? (
         <Loading />
       ) : q.isError ? (
-        <ErrorBox error={q.error} />
+        <ErrorBox error={q.error} onRetry={() => q.refetch()} />
       ) : (
         <>
           <div className="flex flex-wrap gap-3">

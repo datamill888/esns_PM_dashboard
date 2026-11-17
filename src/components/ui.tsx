@@ -46,11 +46,16 @@ export function Empty({ children }: { children: ReactNode }) {
   return <div className="px-4 py-10 text-center text-sm text-sub">{children}</div>;
 }
 
-export function ErrorBox({ error }: { error: unknown }) {
+export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const msg = error instanceof Error ? error.message : String(error);
   return (
-    <div className="rounded-md border border-bad/30 bg-bad/5 px-4 py-3 text-sm text-bad">
-      Couldn&apos;t load this data: {msg}
+    <div className="flex items-start gap-4 rounded-md border border-bad/30 bg-bad/5 px-4 py-3 text-sm text-bad">
+      <div className="flex-1">Couldn&apos;t load this data: {msg}</div>
+      {onRetry && (
+        <button type="button" onClick={onRetry} className="shrink-0 rounded border border-bad/40 bg-panel px-3 py-1 text-[12px] font-medium text-ink hover:bg-canvas">
+          Try again
+        </button>
+      )}
     </div>
   );
 }

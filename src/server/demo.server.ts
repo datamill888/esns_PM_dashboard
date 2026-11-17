@@ -5,6 +5,8 @@
  */
 import { addDays, daysBetween, sundayOnOrBefore, weeksBetween, type ISODate } from "@/lib/dates";
 import type {
+  DrillRequest,
+  DrillResult,
   CommitmentRow,
   CostCodePerfRow,
   CostTypePerfRow,
@@ -14,7 +16,8 @@ import type {
   Overview,
   WeeklyPerfRow,
 } from "@/lib/types";
-import { DEFAULT_COST_TYPES } from "./costTypes";
+import { DEFAULT_COST_TYPES } from "@/lib/costTypes";
+import { DRILL_COLUMNS } from "./drill.server";
 
 function rng(seed: string) {
   let h = 2166136261;
@@ -119,6 +122,8 @@ export function demoOverview(jobId: string, asOf: ISODate): Overview {
     byCostCode,
     trend: weeks.map((w) => ({ weekEnding: w.weekEnding, spend: w.byType.reduce((s, b) => s + b.amt, 0) })),
     daysElapsed: header?.jobDate ? Math.max(1, daysBetween(header.jobDate, asOf)) : 1,
+    periodWeek: cur,
+    lastPeriodWeek: prev,
   };
 }
 
@@ -165,6 +170,7 @@ export function demoCommitments(jobId: string): CommitmentRow[] {
       const ct = DEFAULT_COST_TYPES[(vi + l) % DEFAULT_COST_TYPES.length];
       const cc = COST_CODES[(vi * 2 + l) % COST_CODES.length];
       rows.push({
+        doc: vi < 2 ? "PO" : "SC",
         vendorId: vid,
         vendorName: vname,
         poNum: `${vi < 2 ? "PO" : "SC"}-${jobId.slice(-3)}${vi + 1}`,
@@ -185,4 +191,39 @@ export function demoCommitments(jobId: string): CommitmentRow[] {
     }
   });
   return rows;
+}
+
+/** Demo drill: split the clicked total into plausible lines so the panel reconciles. */
+export function demoDrill(r: DrillRequest, total: number): DrillResult {
+  const cols = DRILL_COLUMNS[r.kind];
+  const rand = rng(JSON.stringify(r));
+  const n = Math.max(1, Math.min(14, Math.round(Math.abs(total) / 4000) + 3));
+  const weights = Array.from({ length: n }, () => 0.3 + rand());
+  const wsum = weights.reduce((a, b) => a + b, 0);
+  let left = Math.round(total * 100);
+  const rows = weights.map((w, i) => {
+    const cents = i === n - 1 ? left : Math.round((total * 100 * w) / wsum);
+    left -= cents;
+    const amt = cents / 100;
+    const date = r.kind === "cost" && r.weekEnding ? addDays(r.weekEnding, -Math.floor(rand() * 7)) : addDays("2026-10-25", -Math.floor(rand() * 60));
+    const ct = r.kind === "cost" ? (r.costTypes?.[0] ?? DEFAULT_COST_TYPES[i % DEFAULT_COST_TYPES.length].code) : "BM";
+    const base: Record<string, string | number | null> = {};
+    for (const c of cols) base[c.key] = null;
+    return {
+      ...base,
+      txn_date: date, week_ending: r.kind === "cost" && r.weekEnding ? r.weekEnding : sundayOnOrBefore(addDays(date, 6)), distr_date: date, invoice_date: date, hist_date: date, inv_date: date,
+      txn_type: r.kind === "cost" ? r.types[i % r.types.length] : null, type2: ct === "BL" ? "Gross" : "AP", src: "Demo",
+      doc_num: String(5_750_000 + Math.floor(rand() * 9999)), seq_num: String(i + 1),
+      cost_type_cd: ct, cc: r.kind === "cost" ? (r.costCode ?? COST_CODES[i % COST_CODES.length][0]) : COST_CODES[i % COST_CODES.length][0],
+      descr: ct === "BL" ? `PR PERIOD ENDING ${date}` : `Demo transaction ${i + 1}`,
+      employee: ct === "BL" || ct === "BS" ? ["Alex Rivera", "Sam Patel", "Jo Kim"][i % 3] : null,
+      vendor: ct === "BL" || ct === "BS" ? null : "Gulf Coast Ready Mix",
+      ven_invoice_num: `INV-${1000 + i}`, invoice_num: r.kind === "ar" ? (r.invoiceNum ?? `00${i}-JOB`) : null,
+      hrs: ct === "BL" ? Math.round(amt / 55) : null, units: null, up: null,
+      amt, paid_amt: r.kind === "ap" ? amt : null, rcvd_amt: r.kind === "ar" ? amt : null, outstanding: r.kind === "ar" ? 0 : null,
+    };
+  });
+  const totals: Record<string, number> = {};
+  for (const c of cols) if (c.type === "money" || c.type === "num") totals[c.key] = rows.reduce((a, x) => a + (Number(x[c.key as keyof typeof x]) || 0), 0);
+  return { source: "demo", columns: cols, rows: rows.map((x) => Object.fromEntries(cols.map((c) => [c.key, (x as Record<string, string | number | null>)[c.key] ?? null]))), totals, count: rows.length, truncated: false };
 }

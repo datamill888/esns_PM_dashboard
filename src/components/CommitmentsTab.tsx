@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { ISODate } from "@/lib/dates";
+import { fmtShort, type ISODate } from "@/lib/dates";
 import { money, money2, qty } from "@/lib/format";
 import type { CommitmentRow } from "@/lib/types";
 import { getCommitments } from "@/lib/api/pm.functions";
+import { Drill } from "./Drill";
 import { Card, Empty, ErrorBox, Loading, Stat } from "./ui";
 
 export function CommitmentsTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
@@ -22,7 +23,7 @@ export function CommitmentsTab({ jobId, asOf }: { jobId: string; asOf: ISODate }
   }, [q.data, filter, openOnly]);
 
   if (q.isPending) return <Loading />;
-  if (q.isError) return <ErrorBox error={q.error} />;
+  if (q.isError) return <ErrorBox error={q.error} onRetry={() => q.refetch()} />;
 
   const t = (k: keyof CommitmentRow) => rows.reduce((s, r) => s + (r[k] as number), 0);
   const ordered = t("amtOrdered");
@@ -80,7 +81,7 @@ export function CommitmentsTab({ jobId, asOf }: { jobId: string; asOf: ISODate }
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={`${r.poNum}|${r.lineNum}`}>
+                  <tr key={`${r.doc}|${r.poNum}|${r.lineNum}`}>
                     <td className="font-semibold">{r.poNum}</td>
                     <td>{r.lineNum}</td>
                     <td className="max-w-[200px] truncate" title={r.vendorName ?? ""}>{r.vendorName ?? r.vendorId ?? "—"}</td>
@@ -92,10 +93,16 @@ export function CommitmentsTab({ jobId, asOf }: { jobId: string; asOf: ISODate }
                     <td className="num r">{qty(r.qtyOrdered)}</td>
                     <td className="num r">{qty(r.qtyReceived)}</td>
                     <td className="num r">{qty(r.qtyOrdered - r.qtyReceived)}</td>
-                    <td className="num r">{money(r.amtOrdered)}</td>
-                    <td className="num r">{money(r.amtReceived)}</td>
+                    <td className="num r">
+                      <Drill title={`Ordered — ${r.doc} ${r.poNum} line ${r.lineNum}`} subtitle={`Price history and change orders${r.vendorName ? ` · ${r.vendorName}` : ""}`} request={{ kind: "commit", doc: r.doc, num: r.poNum, line: r.lineNum }} value={r.amtOrdered}>{money(r.amtOrdered)}</Drill>
+                    </td>
+                    <td className="num r">
+                      <Drill title={`Received / invoiced — ${r.doc} ${r.poNum} line ${r.lineNum}`} subtitle={`AP distributions on or before ${fmtShort(asOf)}${r.vendorName ? ` · ${r.vendorName}` : ""}`} request={{ kind: "ap", doc: r.doc, num: r.poNum, line: r.lineNum }} value={r.amtReceived}>{money(r.amtReceived)}</Drill>
+                    </td>
                     <td className="num r font-medium">{money(r.amtOrdered - r.amtReceived)}</td>
-                    <td className="num r">{money(r.paidAmt)}</td>
+                    <td className="num r">
+                      <Drill title={`Paid — ${r.doc} ${r.poNum} line ${r.lineNum}`} subtitle={`AP distributions on or before ${fmtShort(asOf)}${r.vendorName ? ` · ${r.vendorName}` : ""}`} request={{ kind: "ap", doc: r.doc, num: r.poNum, line: r.lineNum }} value={r.paidAmt} valueColumn="paid_amt">{money(r.paidAmt)}</Drill>
+                    </td>
                   </tr>
                 ))}
               </tbody>

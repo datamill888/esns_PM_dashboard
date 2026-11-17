@@ -3,15 +3,20 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { fmtShort, type ISODate } from "@/lib/dates";
 import { money, moneyCompact, pct } from "@/lib/format";
 import { getOverview } from "@/lib/api/pm.functions";
+import type { DrillRequest } from "@/lib/types";
+import { Drill, useDrill } from "./Drill";
 import { Card, Delta, Empty, ErrorBox, Loading, Stat } from "./ui";
 
+const asOfNote = (asOf: ISODate) => `Distributed on or before ${fmtShort(asOf)}`;
+
 export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
+  const openDrill = useDrill();
   const q = useQuery({
     queryKey: ["overview", jobId, asOf],
     queryFn: () => getOverview({ data: { jobId, asOf } }),
   });
   if (q.isPending) return <Loading />;
-  if (q.isError) return <ErrorBox error={q.error} />;
+  if (q.isError) return <ErrorBox error={q.error} onRetry={() => q.refetch()} />;
   const d = q.data;
   const h = d.header;
 
@@ -20,6 +25,9 @@ export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
   const period = d.weekly.reduce((s, r) => s + r.periodSpend, 0);
   const last = d.weekly.reduce((s, r) => s + r.lastPeriodSpend, 0);
   const days = Math.max(1, d.daysElapsed);
+  const jc = (extra: Partial<Extract<DrillRequest, { kind: "cost" }>> = {}): DrillRequest => ({ kind: "cost", types: ["JC"], capToAsOf: true, ...extra });
+  const est = (extra: Partial<Extract<DrillRequest, { kind: "cost" }>> = {}): DrillRequest => ({ kind: "cost", types: ["EST"], capToAsOf: true, ...extra });
+  const wk = (w: ISODate) => `Week ending ${fmtShort(w)} · ${asOfNote(asOf)}`;
 
   return (
     <div className="space-y-5">
@@ -48,15 +56,15 @@ export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
       )}
 
       <div className="flex flex-wrap gap-3">
-        <Stat label="Budget (EST)" value={money(budget)} tone="bl" />
-        <Stat label="Spend to Date (JC)" value={money(spend)} tone="ac" sub={budget ? `${pct(spend / budget)} of budget` : undefined} />
+        <Stat label="Budget (EST)" value={<Drill title="Budget (EST) — all cost types" subtitle={asOfNote(asOf)} request={est()} value={budget}>{money(budget)}</Drill>} tone="bl" />
+        <Stat label="Spend to Date (JC)" value={<Drill title="Spend to date (JC) — all cost types" subtitle={asOfNote(asOf)} request={jc()} value={spend}>{money(spend)}</Drill>} tone="ac" sub={budget ? `${pct(spend / budget)} of budget` : undefined} />
         <Stat
           label="Budget Remaining"
           value={money(budget - spend)}
           tone={budget - spend >= 0 ? "ev" : "neutral"}
           valueClass={budget - spend < 0 ? "text-bad" : undefined}
         />
-        <Stat label="This Week Spend" value={money(period)} tone="fc" sub={<>vs last week <Delta value={period - last} goodWhenPositive={false}>{money(period - last)}</Delta></>} />
+        <Stat label="This Week Spend" value={<Drill title="This week spend — all cost types" subtitle={wk(d.periodWeek)} request={jc({ weekEnding: d.periodWeek })} value={period}>{money(period)}</Drill>} tone="fc" sub={<>vs last week <Delta value={period - last} goodWhenPositive={false}>{money(period - last)}</Delta></>} />
         <Stat label="Avg Weekly Spend" value={money((spend / days) * 7)} sub={`${money(spend / days)}/day · ${money((spend / days) * 30)}/mo`} />
       </div>
 
@@ -82,8 +90,12 @@ export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
                     return (
                       <tr key={r.costType}>
                         <td><span className="font-semibold">{r.costType}</span> <span className="text-sub">{r.costTypeDescr}</span></td>
-                        <td className="num r">{money(r.periodSpend)}</td>
-                        <td className="num r">{money(r.lastPeriodSpend)}</td>
+                        <td className="num r">
+                          <Drill title={`Period spend — ${r.costType} ${r.costTypeDescr}`} subtitle={wk(d.periodWeek)} request={jc({ costTypes: [r.costType], weekEnding: d.periodWeek })} value={r.periodSpend}>{money(r.periodSpend)}</Drill>
+                        </td>
+                        <td className="num r">
+                          <Drill title={`Last period spend — ${r.costType} ${r.costTypeDescr}`} subtitle={wk(d.lastPeriodWeek)} request={jc({ costTypes: [r.costType], weekEnding: d.lastPeriodWeek })} value={r.lastPeriodSpend}>{money(r.lastPeriodSpend)}</Drill>
+                        </td>
                         <td className="r"><Delta value={ch} goodWhenPositive={false}>{money(ch)}</Delta></td>
                         <td className="r"><Delta value={ch} goodWhenPositive={false}>{r.lastPeriodSpend ? pct(ch / r.lastPeriodSpend) : "—"}</Delta></td>
                       </tr>
@@ -93,8 +105,12 @@ export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
                 <tfoot>
                   <tr>
                     <td>Total</td>
-                    <td className="num r">{money(period)}</td>
-                    <td className="num r">{money(last)}</td>
+                    <td className="num r">
+                      <Drill title="Period spend — all cost types" subtitle={wk(d.periodWeek)} request={jc({ weekEnding: d.periodWeek })} value={period}>{money(period)}</Drill>
+                    </td>
+                    <td className="num r">
+                      <Drill title="Last period spend — all cost types" subtitle={wk(d.lastPeriodWeek)} request={jc({ weekEnding: d.lastPeriodWeek })} value={last}>{money(last)}</Drill>
+                    </td>
                     <td className="r"><Delta value={period - last} goodWhenPositive={false}>{money(period - last)}</Delta></td>
                     <td className="r"><Delta value={period - last} goodWhenPositive={false}>{last ? pct((period - last) / last) : "—"}</Delta></td>
                   </tr>
@@ -104,13 +120,28 @@ export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
           )}
         </Card>
 
-        <Card title="Weekly Spend Trend" right="actual cost (JC) by week ending">
+        <Card title="Weekly Spend Trend" right="click a week to see its transactions">
           {d.trend.length === 0 ? (
             <Empty>No weekly spend yet.</Empty>
           ) : (
             <div className="h-[260px] px-2 py-3">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={d.trend} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
+                <AreaChart
+                  data={d.trend}
+                  margin={{ top: 8, right: 16, bottom: 0, left: 8 }}
+                  onClick={(e) => {
+                    const i = e?.activeTooltipIndex;
+                    const pt = typeof i === "number" ? d.trend[i] : typeof i === "string" ? d.trend[Number(i)] : undefined;
+                    if (pt && openDrill)
+                      openDrill({
+                        title: `Actual cost — week ending ${fmtShort(pt.weekEnding)}`,
+                        subtitle: "All cost types, every line posted to this week",
+                        request: { kind: "cost", types: ["JC"], weekEnding: pt.weekEnding },
+                        clickedValue: pt.spend,
+                      });
+                  }}
+                  style={{ cursor: openDrill ? "pointer" : undefined }}
+                >
                   <defs>
                     <linearGradient id="spendFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--color-ac)" stopOpacity={0.25} />
@@ -135,6 +166,8 @@ export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
           days={days}
           showAverages
           codeLabel="Cost Type"
+          asOf={asOf}
+          filter={(code) => ({ costTypes: [code] })}
         />
       </Card>
 
@@ -143,6 +176,8 @@ export function OverviewTab({ jobId, asOf }: { jobId: string; asOf: ISODate }) {
           rows={d.byCostCode.map((r) => ({ key: r.costCode, code: r.costCode, descr: r.costCodeDescr, spend: r.spendToDate, budget: r.budget }))}
           days={days}
           codeLabel="Cost Code"
+          asOf={asOf}
+          filter={(code) => ({ costCode: code })}
         />
       </Card>
     </div>
@@ -154,12 +189,24 @@ function PerfTable({
   days,
   showAverages,
   codeLabel,
+  asOf,
+  filter,
 }: {
   rows: { key: string; code: string; descr: string; spend: number; budget: number }[];
   days: number;
   showAverages?: boolean;
   codeLabel: string;
+  asOf: ISODate;
+  /** How a row's code narrows the drill (cost type vs cost code). */
+  filter: (code: string) => Partial<Extract<DrillRequest, { kind: "cost" }>>;
 }) {
+  const sub = asOfNote(asOf);
+  const req = (type: "JC" | "EST", code?: string): DrillRequest => ({
+    kind: "cost",
+    types: [type],
+    capToAsOf: true,
+    ...(code != null ? filter(code) : {}),
+  });
   if (rows.length === 0) return <Empty>No budget or cost recorded for this job yet.</Empty>;
   const tSpend = rows.reduce((s, r) => s + r.spend, 0);
   const tBudget = rows.reduce((s, r) => s + r.budget, 0);
@@ -198,8 +245,12 @@ function PerfTable({
                     <td className="num r">{money((r.spend / days) * 30)}</td>
                   </>
                 )}
-                <td className="num r">{money(r.spend)}</td>
-                <td className="num r">{money(r.budget)}</td>
+                <td className="num r">
+                  <Drill title={`Spend to date — ${codeLabel} ${r.code} ${r.descr}`} subtitle={sub} request={req("JC", r.code)} value={r.spend}>{money(r.spend)}</Drill>
+                </td>
+                <td className="num r">
+                  <Drill title={`Budget (EST) — ${codeLabel} ${r.code} ${r.descr}`} subtitle={sub} request={req("EST", r.code)} value={r.budget}>{money(r.budget)}</Drill>
+                </td>
                 <td className="r"><Delta value={rem}>{money(rem)}</Delta></td>
                 <td><Bar p={p} /></td>
               </tr>
@@ -216,8 +267,12 @@ function PerfTable({
                 <td className="num r">{money((tSpend / days) * 30)}</td>
               </>
             )}
-            <td className="num r">{money(tSpend)}</td>
-            <td className="num r">{money(tBudget)}</td>
+            <td className="num r">
+              <Drill title="Spend to date — all" subtitle={sub} request={req("JC")} value={tSpend}>{money(tSpend)}</Drill>
+            </td>
+            <td className="num r">
+              <Drill title="Budget (EST) — all" subtitle={sub} request={req("EST")} value={tBudget}>{money(tBudget)}</Drill>
+            </td>
             <td className="r"><Delta value={tBudget - tSpend}>{money(tBudget - tSpend)}</Delta></td>
             <td><Bar p={tBudget ? tSpend / tBudget : null} /></td>
           </tr>

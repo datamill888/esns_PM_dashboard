@@ -7,9 +7,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { daysBetween, sundayOnOrBefore, todayISO, weeksBetween } from "@/lib/dates";
-import { TRACKER_SERIES, type DataSource, type Overview, type TrackerData } from "@/lib/types";
+import { TRACKER_SERIES, type DataSource, type DrillResult, type Overview, type TrackerData } from "@/lib/types";
 import { getServerSession } from "@/server/auth";
-import { DEFAULT_COST_TYPES } from "@/server/costTypes";
+import { DEFAULT_COST_TYPES } from "@/lib/costTypes";
 
 const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const jobInput = z.object({ jobId: z.string().min(1).max(40), asOf: iso });
@@ -58,6 +58,8 @@ export const getOverview = createServerFn({ method: "GET" })
       byCostCode,
       trend,
       daysElapsed: header?.jobDate ? Math.max(1, daysBetween(header.jobDate, data.asOf)) : 1,
+      periodWeek: q.periodWeeks(data.asOf).cur,
+      lastPeriodWeek: q.periodWeeks(data.asOf).last,
     };
   });
 
@@ -81,6 +83,34 @@ export const getInvoices = createServerFn({ method: "GET" })
     }
     const { invoices } = await import("@/server/queries.server");
     return { source: "incorta" as DataSource, rows: await invoices(getRequest(), data.jobId, data.asOf) };
+  });
+
+/* ---------------- Drill-through ---------------- */
+
+const lineRef = { num: z.string().min(1).max(40), line: z.string().regex(/^\d{1,6}$/), doc: z.enum(["PO", "SC"]) };
+const drillRequest = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("cost"),
+    types: z.array(z.enum(["JC", "EST"])).min(1).max(2),
+    costTypes: z.array(z.string().min(1).max(10)).max(20).optional(),
+    costCode: z.string().max(40).optional(),
+    weekEnding: iso.optional(),
+    capToAsOf: z.boolean().optional(),
+  }),
+  z.object({ kind: z.literal("ap"), ...lineRef }),
+  z.object({ kind: z.literal("commit"), ...lineRef }),
+  z.object({ kind: z.literal("ar"), invoiceNum: z.string().max(60).optional(), invoiceDate: iso.nullable().optional() }),
+]);
+
+export const getDrill = createServerFn({ method: "GET" })
+  .validator(z.object({ jobId: z.string().min(1).max(40), asOf: iso, request: drillRequest, demoTotal: z.number().finite().optional() }))
+  .handler(async ({ data }): Promise<DrillResult> => {
+    if (live() === "demo") {
+      const { demoDrill } = await import("@/server/demo.server");
+      return demoDrill(data.request, data.demoTotal ?? 0);
+    }
+    const { drill } = await import("@/server/drill.server");
+    return drill(getRequest(), data.jobId, data.asOf, data.request);
   });
 
 /* ---------------- Cost Performance Tracker (Tab 4) ---------------- */

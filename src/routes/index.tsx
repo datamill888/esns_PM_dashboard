@@ -8,6 +8,7 @@ import { CommitmentsTab } from "@/components/CommitmentsTab";
 import { InvoicingTab } from "@/components/InvoicingTab";
 import { TrackerTab } from "@/components/TrackerTab";
 import { JobPicker } from "@/components/JobPicker";
+import { DrillProvider } from "@/components/Drill";
 
 const TABS = [
   { id: "overview", label: "PM Dashboard" },
@@ -112,19 +113,23 @@ function Dashboard() {
               Pick a job from the selector above. Figures are as of {fmtShort(asOf)} (defaults to the most recent Sunday).
             </p>
           </div>
-        ) : tab === "overview" ? (
-          <OverviewTab jobId={job.jobId} asOf={asOf} />
-        ) : tab === "po" ? (
-          <CommitmentsTab jobId={job.jobId} asOf={asOf} />
-        ) : tab === "invoicing" ? (
-          <InvoicingTab jobId={job.jobId} asOf={asOf} />
         ) : (
-          <TrackerTab
-            jobId={job.jobId}
-            from={search.from ?? addDays(session.pastSunday, -12 * 7)}
-            to={search.to ?? session.pastSunday}
-            onPeriod={(from, to) => set({ from, to })}
-          />
+          <DrillProvider jobId={job.jobId} asOf={asOf}>
+            {tab === "overview" ? (
+              <OverviewTab jobId={job.jobId} asOf={asOf} />
+            ) : tab === "po" ? (
+              <CommitmentsTab jobId={job.jobId} asOf={asOf} />
+            ) : tab === "invoicing" ? (
+              <InvoicingTab jobId={job.jobId} asOf={asOf} />
+            ) : (
+              <TrackerTab
+                jobId={job.jobId}
+                from={search.from ?? addDays(session.pastSunday, -12 * 7)}
+                to={search.to ?? session.pastSunday}
+                onPeriod={(from, to) => set({ from, to })}
+              />
+            )}
+          </DrillProvider>
         )}
       </main>
     </div>

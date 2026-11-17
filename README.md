@@ -14,6 +14,32 @@ One job selector and an **As of** date (defaults to the most recent Sunday, as
 | **Invoicing** | "Invoicing" insight | AR invoices (accounts 115010/115031/115040): amount, received, outstanding, days open |
 | **Cost Performance Tracker** | Tab 4 iframe (`incorta-prod-esnscostinput.layout-app.com`) | Editable 13-week Baseline / Forecast / EV grid by cost type (BL, BS, BT1, BM, BC), KPI tiles (CPI = EV ÷ Forecast, PF = EV ÷ Baseline), and read-only Penta actuals for comparison |
 
+## Drill-through
+
+Any figure with a dotted underline can be clicked. It opens a panel listing
+the source transactions, with a line count, a total, a filter, sortable
+columns, and a CSV download. The panel uses the same filters as the query
+that produced the figure, so its total should match it, and the panel says
+whether it does.
+
+| Clicked value | Transactions shown |
+| --- | --- |
+| Budget / spend by cost type or cost code, KPI tiles, Weekly Performance cells | `Job_Cost_Stacked_1A` lines (EST or JC), with employee and vendor names |
+| A week on the Weekly Spend Trend chart, tracker "Actual" cells | JC lines for that week (tracker cells include rolled-up burden codes) |
+| PO & SC: Amt Ordered | Price history and change orders (`BI40_PO_PRC_HIST` / `BI40_SC_PRC_HIST`) |
+| PO & SC: Amt Rcvd/Invcd, Paid | AP distributions (`AP_PH_BASE`) for the line |
+| Invoicing: amounts and KPI tiles | AR distributions (`AR_BH_BASE`) for the invoice, or all invoices |
+
+The panel shows up to 2,000 lines. The count and totals cover every matching
+line. Lines with zero amount, hours and units are excluded, as in the
+original dashboard. Queries are in `src/server/drill.server.ts`.
+
+**Known limitation:** `Job_Cost_Stacked_1A` has about 568M rows, and the
+SQL Interface loads whole columns into memory. On a cache miss while memory
+is short, it refuses the query ("too large to load"). The app shows a plain
+message and a **Try again** button. A job-scoped or narrower table in Incorta
+would remove this.
+
 ## Data sources (ES Prod)
 
 All Incorta reads go through the SQL Interface **as the signed-in user**, so

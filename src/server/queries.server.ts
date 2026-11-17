@@ -27,8 +27,9 @@ import type {
   WeeklyPerfRow,
   WeeklySpendPoint,
 } from "@/lib/types";
-import { ACTUALS_ROLLUP } from "./costTypes";
+import { ACTUALS_ROLLUP } from "@/lib/costTypes";
 import { sqlQuery as rawSqlQuery } from "./incorta";
+import { friendlySqlError } from "./sqlErrors";
 
 /**
  * The SQL Interface returns unaliased columns in the model's own case
@@ -36,7 +37,12 @@ import { sqlQuery as rawSqlQuery } from "./incorta";
  * mappers below can rely on one spelling.
  */
 async function sqlQuery<T>(req: Request, sql: string, params: unknown[] = []): Promise<T[]> {
-  const rows = await rawSqlQuery(req, sql, params);
+  let rows;
+  try {
+    rows = await rawSqlQuery(req, sql, params);
+  } catch (e) {
+    throw friendlySqlError(e);
+  }
   return rows.map((r) => {
     const o: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(r)) o[k.toLowerCase()] = v;
@@ -112,11 +118,15 @@ export async function jobHeader(req: Request, jobId: string, asOf: ISODate): Pro
  * Weekly Performance. Original formula: week ending = addDays(weekEndDate(asOf - 1), 1)
  * i.e. the Sunday on/after (asOf - 1); last period = that minus 7 days.
  */
-export async function weeklyPerformance(req: Request, jobId: string, asOf: ISODate): Promise<WeeklyPerfRow[]> {
+export function periodWeeks(asOf: ISODate): { cur: ISODate; last: ISODate } {
   const prior = addDays(asOf, -1);
   const dow = new Date(`${prior}T00:00:00Z`).getUTCDay();
   const cur = dow === 0 ? prior : addDays(prior, 7 - dow);
-  const last = addDays(cur, -7);
+  return { cur, last: addDays(cur, -7) };
+}
+
+export async function weeklyPerformance(req: Request, jobId: string, asOf: ISODate): Promise<WeeklyPerfRow[]> {
+  const { cur, last } = periodWeeks(asOf);
   const rows = await sqlQuery<Record<string, unknown>>(
     req,
     `SELECT s.cost_type_cd, MAX(ct.descr) AS descr,
@@ -305,6 +315,7 @@ export async function commitments(req: Request, jobId: string, asOf: ISODate): P
   );
 
   const poRows: CommitmentRow[] = po.map((r) => ({
+    doc: "PO",
     vendorId: s(r.ven_id),
     vendorName: s(r.vendor),
     poNum: String(r.po_num),
@@ -324,6 +335,7 @@ export async function commitments(req: Request, jobId: string, asOf: ISODate): P
     paidAmt: n(r.paid),
   }));
   const scRows: CommitmentRow[] = sc.map((r) => ({
+    doc: "SC",
     vendorId: s(r.ven_id),
     vendorName: s(r.vendor),
     poNum: String(r.sc_num),
